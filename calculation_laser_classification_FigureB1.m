@@ -23,7 +23,9 @@ t_single = 5e-12 % second, 5ps, pulse duration
 % ----------- Parameters for our system ------------ %
 
 % estimate angle for a diffuse source, see 4.3 d
-ang = 200 % estimated mrad, which might be > 200 mrad
+NA = 0.275 
+%alpha = arcsin(NA) = 279 mrad  
+ang = asin(NA) * 1000 % estimated mrad, > 100 mrad
 
 ang_min = 1.5; % mrad
 
@@ -41,8 +43,19 @@ if ang> ang_max % we always have the angle > ang_max,
     C6 = ang_max / ang_min; % for ang > ang_max
 end
 wavList = [650 : 10: 900]; % wavelengths used
+
+
+
 for iwav = 1:length(wavList) % max
     wv = wavList(iwav);
+    %% calculate AEL for a single pulse 
+    if t_single<1e-11 && t_single>=1e-13
+            % from 4.3 f) repetitively pulsed or modulated lasers
+        %  Table 4: extented sources (retinal hazard region 400 - 1400 nm)
+        AELsingle = 3.8 * 10 ^(-8) * C6; % 400 to 1050 nm  J 
+    end
+%  
+%% determine AELs.p.T, 4.3 f), requirement 2), see NOTE 1      
     if wv <=1050 && wv >= 700
         C4 = 10 ^(0.002 * (wv - 700));
         % C4 for 700 nm - 1050 nm, does not need this correction factor for < 700 nm
@@ -50,16 +63,9 @@ for iwav = 1:length(wavList) % max
         C4 = 1;
     end
  
-
-
-    % from 4.3 f) repetitively pulsed or modulated lasers
-    %  Table 4: extented sources (retinal hazard region 400 - 1400 nm)
-    AELsingle = 7 * t_single ^0.75 * C4 * C6; % 700 to 1050 nm  J 
-    
-    %% determine AELs.p.T, 4.3 f), requirement 2), see NOTE 1
-    T = time_base; % chosen time base from previous condition
+    T = time_base; % chosen time base from previous condition 
     N_T = T ./ PRF; % number of pulses in time T
-    AEL_T = 7 * T ^0.75 * C4 * C6;
+    AEL_T = 7 * T ^0.75 * C4 * C6; % for 10 <=T <=100
     AELspT = AEL_T / N_T;  % J
     %%  table 2 Times below which pulse groups are summed
     Ti = 5 * 1e-6; %s for wav 400 - 1050 nm
@@ -71,6 +77,7 @@ for iwav = 1:length(wavList) % max
     % is calculated.
     t_single_updated = Ti;
     AELsingle_updated = 7 * t_single_updated ^0.75 * C4 * C6; % 700 to 1050 nm  J 
+    % this equation is for a time 5 × 10–6 to 1.3 × 10–5
     % the PRF is changed accordingly to determine the maxium allowed value of N
     % see 4.3 f), the new value of AELsingle is divided by the number of
     % original pulses contained in the period Ti before substituing the final

@@ -19,11 +19,13 @@ time_base = 100; % s, time base defined in 4.3 e) condition 2
 PRF = 80e6 % Hz pulse repetition frequency
 t = 1 % exposure time s for one exposure
 % see Note 1: AELsingle is determined on the duration of a single pulse
-t_single = 5e-12; % second, 5ps, pulse duration
+t_single = 5e-12 % second, 5ps, pulse duration
 % ----------- Parameters for our system ------------ %
 
-% estimate angle for a diffuse source
-ang = 200 % estimated mrad, which might be > 200 mrad
+% estimate angle for a diffuse source, see 4.3 d
+NA = 0.275 
+%alpha = arcsin(NA) = 279 mrad  
+ang = asin(NA) * 1000 % estimated mrad, > 100 mrad
 
 ang_min = 1.5; % mrad
 
@@ -40,9 +42,20 @@ if ang> ang_max % we always have the angle > ang_max,
                 % for other cases, the calculation is different
     C6 = ang_max / ang_min; % for ang > ang_max
 end
-wavList = [650 : 50: 900]; % wavelengths used
+wavList = [650 : 10: 900]; % wavelengths used
+
+
+
 for iwav = 1:length(wavList) % max
     wv = wavList(iwav);
+    %% calculate AEL for a single pulse 
+    if t_single<1e-11 && t_single>=1e-13
+            % from 4.3 f) repetitively pulsed or modulated lasers
+        %  Table 4: extented sources (retinal hazard region 400 - 1400 nm)
+        AELsingle = 3.8 * 10 ^(-8) * C6; % 400 to 1050 nm  J 
+    end
+%  
+%% determine AELs.p.T, 4.3 f), requirement 2), see NOTE 1      
     if wv <=1050 && wv >= 700
         C4 = 10 ^(0.002 * (wv - 700));
         % C4 for 700 nm - 1050 nm, does not need this correction factor for < 700 nm
@@ -50,42 +63,35 @@ for iwav = 1:length(wavList) % max
         C4 = 1;
     end
  
-
-
-    % from 4.3 f) repetitively pulsed or modulated lasers
-    %  Table 4: extented sources (retinal hazard region 400 - 1400 nm)
-    AELsingle = 7 * t_single ^0.75 * C4 * C6; % 700 to 1050 nm  J 
-    
-    %% determine AELs.p.T, 4.3 f), requirement 2), see NOTE 1
-    T = time_base % chosen time base from previous condition
-    N_T = T ./ PRF % number of pulses in time T
-    AEL_T = 7 * T ^0.75 * C4 * C6
-    AELspT = AEL_T / N_T  % J
+    T = time_base; % chosen time base from previous condition 
+    N_T = T ./ PRF; % number of pulses in time T
+    AEL_T = 7 * T ^0.75 * C4 * C6; % for 10 <=T <=100
+    AELspT = AEL_T / N_T;  % J
     %%  table 2 Times below which pulse groups are summed
     Ti = 5 * 1e-6; %s for wav 400 - 1050 nm
-    
     
     %% determine AELs.t.train
     % Do multiple pulses occur within the period Ti -> yes
     % determine AELspTrain, see Note 2
     % the sinple suplse duration is changed to Ti, the new value of AELsingle
     % is calculated.
-    t_single_updated = Ti
-    AELsingle_updated = 7 * t_single_updated ^0.75 * C4 * C6 % 700 to 1050 nm  J 
+    t_single_updated = Ti;
+    AELsingle_updated = 7 * t_single_updated ^0.75 * C4 * C6; % 700 to 1050 nm  J 
+    % this is for a time 5 × 10–6 to 1,3 × 10–5
     % the PRF is changed accordingly to determine the maxium allowed value of N
     % see 4.3 f), the new value of AELsingle is divided by the number of
     % original pulses contained in the period Ti before substituing the final
     % value of AEL single in equation for AELs.p.train
     
-    numP_in_Ti = Ti * PRF
-    AELsingle_updated_divid = AELsingle_updated ./ numP_in_Ti  % J
-    C5 = 5 * numP_in_Ti^-0.25 % with a minimum value of C5 = 0,4.
-    AELspTrain = AELsingle_updated_divid * C5
+    numP_in_Ti = Ti * PRF;
+    AELsingle_updated_divid = AELsingle_updated ./ numP_in_Ti;  % J
+    C5 = 5 * numP_in_Ti^-0.25; % with a minimum value of C5 = 0,4.
+    AELspTrain = AELsingle_updated_divid * C5;
     
     
     
     %% choose smallest value of AELsingle, AELspTrain, AELspT 
-    AEL_min = min([AELsingle AELspT AELspTrain])  %
+    AEL_min = min([AELsingle AELspT AELspTrain]);  %
     AEL_wav(iwav) = AEL_min;
 end
 
